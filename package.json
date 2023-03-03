@@ -1,0 +1,29 @@
+{
+  "name": "proof-of-agreement",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "util:genadd": "npx hardhat run scripts/address-generator.ts",
+    "deploy:basegoerli": "npx hardhat run scripts/deploy.ts --network base_goerli",
+    "deploy:polygonmumbai": "npx hardhat run scripts/deploy.ts --network polygon_mumbai",
+    "deploy:polygonmainnet": "npx hardhat run scripts/deploy.ts --network polygon_main_net",
+
+    "verify:basegoerli": "npx hardhat verify $npm_config_contract --network base_goerli",
+    "verify:polygonmumbai": "npx hardhat verify $npm_config_contract --network polygon_mumbai",
+    "verify:polygonmainnet": "npx hardhat verify $npm_config_contract --network polygon_main_net"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.0",
+    "hardhat": "^2.12.0"
+  },
+  "dependencies": {
+    "@nomiclabs/hardhat-etherscan": "^3.1.5",
+    "@openzeppelin/contracts": "^4.7.3",
+    "dotenv": "^16.0.3"
+  }
+}
