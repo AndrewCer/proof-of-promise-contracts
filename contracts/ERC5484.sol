@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 
 pragma solidity ^0.8.19;
+
 // @dev: see https://eips.ethereum.org/EIPS/eip-5484
 contract ERC5484 {
     // tokenId => BurnAuth
-    mapping(uint256 => BurnAuth) public burnAuth;
+    mapping(uint256 => BurnAuth) private _burnAuth;
 
     /// A guideline to standardlize burn-authorization's number coding
     enum BurnAuth {
@@ -26,4 +27,11 @@ contract ERC5484 {
         uint256 indexed tokenId,
         BurnAuth burnAuth
     );
+
+    /// @notice provides burn authorization of the token id.
+    /// @dev unassigned tokenIds are invalid, and queries do throw
+    /// @param tokenId The identifier for a token.
+    function burnAuth(uint256 tokenId) external view returns (BurnAuth) {
+        return _burnAuth[tokenId];
+    }
 }
