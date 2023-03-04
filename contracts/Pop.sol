@@ -19,24 +19,29 @@ contract Pop is ERC721URIStorage, ERC721Enumerable, ERC5484, ERC5192 {
 
     struct Promise {
         address creator;
-        address[] receivers; // Addresses that have yet to sign.
-        address[] signers; // Addresses that have signed. May only be added to by contract
-        BurnAuth _burnAuth;
-        string _tokenUri;
+        bool restricted;
+        BurnAuth burnAuth;
+        string tokenUri;
     }
 
     struct PromiseCreation {
         bytes32 promiseHash;
-        address[] receivers; // Addresses that have yet to sign.
-        BurnAuth _burnAuth;
-        string _tokenUri;
+        address[] receivers;
+        BurnAuth burnAuth;
+        string tokenUri;
     }
 
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
-    // TokenUri hash => Promise
+    // Promise hash => Promise
     mapping(bytes32 => Promise) public promises;
+    // Restricted Promises require receivers to be added before they may sign
+    // Promise hash => address => Bool
+    mapping(bytes32 => mapping(address => bool)) public receivers;
+    // Fetch if an address has signed a particular Promise.
+    // Promise hash => address => Bool
+    mapping(bytes32 => mapping(address => bool)) public signers;
 
     constructor() ERC721("Proof of Promise", "PoP") {}
 
@@ -48,6 +53,14 @@ contract Pop is ERC721URIStorage, ERC721Enumerable, ERC5484, ERC5192 {
         _;
     }
 
+    modifier promiseDoesntExist(bytes32 promiseHash) {
+        require(
+            promises[promiseHash].creator != address(0x0),
+            "Promise does not exists"
+        );
+        _;
+    }
+
     function createPromise(PromiseCreation calldata promiseCreation)
         public
         promiseExists(promiseCreation.promiseHash)
@@ -55,12 +68,51 @@ contract Pop is ERC721URIStorage, ERC721Enumerable, ERC5484, ERC5192 {
         bytes32 promiseHash = promiseCreation.promiseHash;
 
         promises[promiseHash].creator = msg.sender;
-        promises[promiseHash].receivers = promiseCreation.receivers;
-        promises[promiseHash]._burnAuth = promiseCreation._burnAuth;
-        promises[promiseHash]._tokenUri = promiseCreation._tokenUri;
+        promises[promiseHash].burnAuth = promiseCreation.burnAuth;
+        promises[promiseHash].tokenUri = promiseCreation.tokenUri;
+
+        if (promiseCreation.receivers.length > 0) {
+            promises[promiseHash].restricted = true;
+            for (uint256 i = 0; i < promiseCreation.receivers.length; ++i) {
+                receivers[promiseHash][promiseCreation.receivers[i]] = true;
+            }
+        }
+    }
+
+    function signPromise(bytes32 promiseHash)
+        public
+        promiseDoesntExist(promiseHash)
+    {
+        if (promises[promiseHash].restricted) {
+            require(
+                receivers[promiseHash][msg.sender] == true,
+                "Not on receivers list"
+            );
+        }
+
+        signers[promiseHash][msg.sender] = true;
+
+        _tokenIds.increment();
+        uint256 tokenId = _tokenIds.current();
+        _mint(msg.sender, tokenId);
+        _setTokenURI(tokenId, promises[promiseHash].tokenUri);
+        _lock(tokenId);
+
+        emit Locked(tokenId);
+        emit Issued(
+            address(0x0),
+            msg.sender,
+            tokenId,
+            promises[promiseHash].burnAuth
+        );
     }
 
     // Overrides
+    function locked(uint256 tokenId) public override(ERC5192) returns (bool) {
+        require(ownerOf(tokenId) != address(0x0), "ERC5192: invalid address");
+
+        return super.locked(tokenId);
+    }
 
     // Soulbound functionality
     function transferFrom(

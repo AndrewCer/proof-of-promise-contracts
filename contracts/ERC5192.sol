@@ -21,10 +21,12 @@ contract ERC5192 {
     /// @dev SBTs assigned to zero address are considered invalid, and queries
     /// about them do throw.
     /// @param tokenId The identifier for an SBT.
-    function locked(uint256 tokenId) internal view returns (bool) {
-        // TODO(nocs): throw here...
-        // require(_locked[tokenId] == address(0x0), "Invalid query");
-
+    function locked(uint256 tokenId) public virtual returns (bool) {
         return _locked[tokenId];
+    }
+
+
+    function _lock(uint256 tokenId) internal virtual {
+        _locked[tokenId] = true;
     }
 }
