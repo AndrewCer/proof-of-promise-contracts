@@ -18,9 +18,9 @@ contract Pop is ERC721URIStorage, ERC721Enumerable, ERC5484, ERC5192 {
     using ECDSA for bytes32;
 
     struct Promise {
+        BurnAuth burnAuth;
         address creator;
         bool restricted;
-        BurnAuth burnAuth;
         string tokenUri;
     }
 
@@ -36,6 +36,8 @@ contract Pop is ERC721URIStorage, ERC721Enumerable, ERC5484, ERC5192 {
 
     // Promise hash => Promise
     mapping(bytes32 => Promise) public promises;
+    // TokenId => Promise hash
+    mapping(uint256 => bytes32) public promiseToken;
     // Restricted Promises require receivers to be added before they may sign
     // Promise hash => address => Bool
     mapping(bytes32 => mapping(address => bool)) public receivers;
@@ -44,6 +46,30 @@ contract Pop is ERC721URIStorage, ERC721Enumerable, ERC5484, ERC5192 {
     mapping(bytes32 => mapping(address => bool)) public signers;
 
     constructor() ERC721("Proof of Promise", "PoP") {}
+
+    modifier onlyBurnAuth(uint256 tokenId, bytes32 promiseHash) {
+        BurnAuth _burnAuth = burnAuth(tokenId);
+        if (_burnAuth == BurnAuth.OwnerOnly) {
+            require(msg.sender == ownerOf(tokenId), "Only owner may burn");
+        }
+        if (_burnAuth == BurnAuth.IssuerOnly) {
+            require(
+                msg.sender == promises[promiseHash].creator,
+                "Only issuer may burn"
+            );
+        }
+        if (_burnAuth == BurnAuth.Both) {
+            require(
+                msg.sender == promises[promiseHash].creator ||
+                    msg.sender == ownerOf(tokenId),
+                "Only issuer or owner may burn"
+            );
+        }
+        if (_burnAuth == BurnAuth.Neither) {
+            revert("Burn not allowed");
+        }
+        _;
+    }
 
     modifier promiseExists(bytes32 promiseHash) {
         require(
@@ -59,6 +85,13 @@ contract Pop is ERC721URIStorage, ERC721Enumerable, ERC5484, ERC5192 {
             "Promise does not exists"
         );
         _;
+    }
+
+    function burnToken(uint256 tokenId, bytes32 promiseHash)
+        public
+        onlyBurnAuth(tokenId, promiseHash)
+    {
+        _burn(tokenId);
     }
 
     function createPromise(PromiseCreation calldata promiseCreation)
@@ -97,6 +130,8 @@ contract Pop is ERC721URIStorage, ERC721Enumerable, ERC5484, ERC5192 {
         _mint(msg.sender, tokenId);
         _setTokenURI(tokenId, promises[promiseHash].tokenUri);
         _lock(tokenId);
+
+        setBurnAuth(tokenId, promises[promiseHash].burnAuth);
 
         emit Locked(tokenId);
         emit Issued(

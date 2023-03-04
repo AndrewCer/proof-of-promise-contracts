@@ -31,7 +31,11 @@ contract ERC5484 {
     /// @notice provides burn authorization of the token id.
     /// @dev unassigned tokenIds are invalid, and queries do throw
     /// @param tokenId The identifier for a token.
-    function burnAuth(uint256 tokenId) external view returns (BurnAuth) {
+    function burnAuth(uint256 tokenId) public view returns (BurnAuth) {
         return _burnAuth[tokenId];
+    }
+
+    function setBurnAuth(uint256 tokenId, BurnAuth auth) public {
+        _burnAuth[tokenId] = auth;
     }
 }
